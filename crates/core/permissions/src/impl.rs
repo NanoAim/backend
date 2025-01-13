@@ -96,7 +96,7 @@ pub async fn calculate_channel_permissions<P: PermissionQuery>(query: &mut P) ->
 
                 let permissions = calculate_user_permissions(query).await;
                 if permissions.has_user_permission(UserPermission::SendMessage) {
-                    (*DEFAULT_PERMISSION_DIRECT_MESSAGE).into()
+                    (ChannelPermission::GrantAllSafe).into()
                 } else {
                     (*DEFAULT_PERMISSION_VIEW_ONLY).into()
                 }
