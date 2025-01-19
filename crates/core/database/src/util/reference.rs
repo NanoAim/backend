@@ -55,15 +55,9 @@ impl Reference {
                 return Err(create_error!(NotFound));
             }
             let config: revolt_config::Settings = config().await;
-            let url: String = format!(
-                "{}/{}/invite",
-                config.hosts.app.to_string(),
-                self.id.to_string()
-            );
 
             Ok(Invite::Server {
                 code: self.id.to_string(),
-                url: url.clone(),
                 server: server.id,
                 creator: server.owner,
                 channel: server

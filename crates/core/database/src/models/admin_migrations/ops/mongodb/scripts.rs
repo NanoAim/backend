@@ -992,7 +992,6 @@ pub async fn run_migrations(db: &MongoDb, revision: i32) -> i32 {
                 Server {
                     #[serde(rename = "_id")]
                     code: String,
-                    url: String,
                     server: String,
                     creator: String,
                     channel: String,
@@ -1000,7 +999,6 @@ pub async fn run_migrations(db: &MongoDb, revision: i32) -> i32 {
                 Group {
                     #[serde(rename = "_id")]
                     code: String,
-                    url: String,
                     creator: String,
                     channel: String,
                 },
@@ -1032,25 +1030,21 @@ pub async fn run_migrations(db: &MongoDb, revision: i32) -> i32 {
             .map(|invite| match invite.invite {
                 OldInvite::Server {
                     code,
-                    url,
                     server,
                     creator,
                     channel,
                 } => Invite::Server {
                     code,
-                    url,
                     server,
                     creator,
                     channel,
                 },
                 OldInvite::Group {
                     code,
-                    url,
                     creator,
                     channel,
                 } => Invite::Group {
                     code,
-                    url,
                     creator,
                     channel,
                 },

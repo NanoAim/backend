@@ -10,8 +10,6 @@ auto_derived!(
             #[cfg_attr(feature = "serde", serde(rename = "_id"))]
             code: String,
             /// Invite code as url
-            url: String,
-            /// Id of the server this invite points to
             server: String,
             /// Id of user who created this invite
             creator: String,
@@ -24,8 +22,6 @@ auto_derived!(
             #[cfg_attr(feature = "serde", serde(rename = "_id"))]
             code: String,
             /// Invite code as url
-            url: String,
-            /// Id of user who created this invite
             creator: String,
             /// Id of the group channel this invite points to
             channel: String,
