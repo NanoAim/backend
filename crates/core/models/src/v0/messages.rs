@@ -97,6 +97,8 @@ auto_derived!(
         MessagesAndUsers {
             /// List of messages
             messages: Vec<Message>,
+            /// List of pinned messages
+            pinned_messages: Vec<Message>,
             /// List of users
             users: Vec<User>,
             /// List of members
@@ -369,7 +371,7 @@ auto_derived!(
 
     /// Optional fields on message
     pub enum FieldsMessage {
-        Pinned
+        Pinned,
     }
 );
 

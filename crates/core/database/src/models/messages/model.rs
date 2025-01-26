@@ -559,13 +559,13 @@ impl Message {
     /// Helper function to fetch many messages with users
     pub async fn fetch_with_users(
         db: &Database,
-        query: MessageQuery,
+        mut query: MessageQuery,
         perspective: &User,
         include_users: Option<bool>,
         server_id: Option<String>,
     ) -> Result<BulkMessageResponse> {
         let messages: Vec<v0::Message> = db
-            .fetch_messages(query)
+            .fetch_messages(query.clone())
             .await?
             .into_iter()
             .map(|msg| msg.into_model(None, None))
@@ -613,8 +613,20 @@ impl Message {
                 .into_iter()
                 .collect::<Vec<String>>();
             let users = User::fetch_many_ids_as_mutuals(db, perspective, &user_ids).await?;
+            query.filter.pinned = Some(true);
+
+            let mut pinned_query = query.clone();
+            pinned_query.filter.pinned = Some(true);
+
+            let pinned_messages: Vec<v0::Message> = db
+                .fetch_messages(pinned_query)
+                .await?
+                .into_iter()
+                .map(|msg| msg.into_model(None, None))
+                .collect();
 
             Ok(BulkMessageResponse::MessagesAndUsers {
+                pinned_messages,
                 messages,
                 users,
                 members: if let Some(server_id) = server_id {

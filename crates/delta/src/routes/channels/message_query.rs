@@ -45,24 +45,26 @@ pub async fn query(
         include_users,
     } = options;
 
+    let mut query = MessageQuery {
+        filter: MessageFilter {
+            channel: Some(channel.id().to_string()),
+            ..Default::default()
+        },
+        time_period: if let Some(nearby) = nearby {
+            MessageTimePeriod::Relative { nearby }
+        } else {
+            MessageTimePeriod::Absolute {
+                before,
+                after,
+                sort,
+            }
+        },
+        limit,
+    };
+
     Message::fetch_with_users(
         db,
-        MessageQuery {
-            filter: MessageFilter {
-                channel: Some(channel.id().to_string()),
-                ..Default::default()
-            },
-            time_period: if let Some(nearby) = nearby {
-                MessageTimePeriod::Relative { nearby }
-            } else {
-                MessageTimePeriod::Absolute {
-                    before,
-                    after,
-                    sort,
-                }
-            },
-            limit,
-        },
+        query,
         &user,
         include_users,
         match channel {
