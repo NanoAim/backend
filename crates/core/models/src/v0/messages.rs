@@ -133,9 +133,17 @@ auto_derived!(
         #[serde(rename = "channel_ownership_changed")]
         ChannelOwnershipChanged { from: String, to: String },
         #[serde(rename = "message_pinned")]
-        MessagePinned { id: String, by: String },
+        MessagePinned {
+            id: String,
+            by: String,
+            by_username: Option<String>,
+        },
         #[serde(rename = "message_unpinned")]
-        MessageUnpinned { id: String, by: String },
+        MessageUnpinned {
+            id: String,
+            by: String,
+            by_username: Option<String>,
+        },
     }
 
     /// Name and / or avatar override information

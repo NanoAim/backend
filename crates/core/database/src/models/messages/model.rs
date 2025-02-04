@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use indexmap::{IndexMap, IndexSet};
 use iso8601_timestamp::Timestamp;
@@ -104,9 +104,17 @@ auto_derived!(
         #[serde(rename = "channel_ownership_changed")]
         ChannelOwnershipChanged { from: String, to: String },
         #[serde(rename = "message_pinned")]
-        MessagePinned { id: String, by: String },
+        MessagePinned {
+            id: String,
+            by: String,
+            by_username: Option<String>,
+        },
         #[serde(rename = "message_unpinned")]
-        MessageUnpinned { id: String, by: String },
+        MessageUnpinned {
+            id: String,
+            by: String,
+            by_username: Option<String>,
+        },
     }
 
     /// Name and / or avatar override information
@@ -614,6 +622,44 @@ impl Message {
                 .collect::<Vec<String>>();
             let users = User::fetch_many_ids_as_mutuals(db, perspective, &user_ids).await?;
             query.filter.pinned = Some(true);
+            let user_map: HashMap<String, String> = users
+                .iter()
+                .map(|u| (u.id.clone(), u.username.clone()))
+                .collect();
+
+            let messages = messages
+                .into_iter()
+                .map(|mut msg| {
+                    if let Some(system) = &mut msg.system {
+                        match system {
+                            v0::SystemMessage::MessagePinned { by, id, .. } => {
+                                let by_username = user_map
+                                    .get(by)
+                                    .cloned()
+                                    .unwrap_or_else(|| "Unknown".to_string());
+                                *system = v0::SystemMessage::MessagePinned {
+                                    by: by.clone(),
+                                    id: id.clone(),
+                                    by_username: Some(by_username),
+                                };
+                            }
+                            v0::SystemMessage::MessageUnpinned { by, id, .. } => {
+                                let by_username = user_map
+                                    .get(by)
+                                    .cloned()
+                                    .unwrap_or_else(|| "Unknown".to_string());
+                                *system = v0::SystemMessage::MessageUnpinned {
+                                    by: by.clone(),
+                                    id: id.clone(),
+                                    by_username: Some(by_username),
+                                };
+                            }
+                            _ => {}
+                        }
+                    }
+                    msg
+                })
+                .collect();
 
             let mut pinned_query = query.clone();
             pinned_query.filter.pinned = Some(true);
