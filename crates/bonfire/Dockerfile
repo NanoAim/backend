@@ -1,5 +1,5 @@
 # Build Stage
-FROM ghcr.io/teamabron/base:latest AS builder
+FROM ghcr.io/abronstudio/base:latest AS builder
 
 # Bundle Stage
 FROM debian:bullseye-slim
