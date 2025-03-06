@@ -118,7 +118,7 @@ jobs:
             # docker.io/${{ steps.export.outputs.tag }}
             ghcr.io/${{ steps.export.outputs.tag }}
           tags: |
-            type=sha
+            type=sha,format=long
 
       # Build crate image
       - name: Publish
