@@ -97,12 +97,12 @@ jobs:
           map: |
             {
               "delta": {
-                "name: "pepchat-backend",
+                "name": "pepchat-backend",
                 "path": "crates/delta",
                 "tag": "${{ secrets.DOCKERHUB_USERNAME }}/server"
               },
               "bonfire": {
-                "name: "pepchat-bonfire",
+                "name": "pepchat-bonfire",
                 "path": "crates/bonfire",
                 "tag": "${{ secrets.DOCKERHUB_USERNAME }}/bonfire"
               }
