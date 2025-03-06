@@ -21,6 +21,22 @@ impl AbstractChannelUnreads for MongoDb {
         user_id: &str,
         message_id: &str,
     ) -> Result<Option<ChannelUnread>> {
+        self.col::<Document>(COL)
+            .update_one(
+                doc! {
+                    "_id.channel": channel_id,
+                    "_id.user": user_id,
+                },
+                doc! {
+                    "$pull": {
+                        "mentions": message_id
+                    }
+                },
+                None,
+            )
+            .await
+            .map_err(|_| create_database_error!("update_one", COL))?;
+
         self.col::<ChannelUnread>(COL)
             .find_one_and_update(
                 doc! {
@@ -135,5 +151,4 @@ impl AbstractChannelUnreads for MongoDb {
             }
         )
     }
-
 }
