@@ -56,8 +56,13 @@ jobs:
           cache-to: type=gha,scope=buildx-base-multi-arch,mode=max
 
   publish:
+    
     needs: [base]
     runs-on: ubuntu-latest
+    env:
+      CONFIG_BRANCH: stage
+      CLONE_DIR: $GITHUB_WORKSPACE/config
+      CONFIG_FILE: $GITHUB_WORKSPACE/config/apps/pep-backend/kustomization.yaml
     if: github.event_name != 'pull_request'
     strategy:
       matrix:
@@ -92,10 +97,12 @@ jobs:
           map: |
             {
               "delta": {
+                "name: "pepchat-backend",
                 "path": "crates/delta",
                 "tag": "${{ secrets.DOCKERHUB_USERNAME }}/server"
               },
               "bonfire": {
+                "name: "pepchat-bonfire",
                 "path": "crates/bonfire",
                 "tag": "${{ secrets.DOCKERHUB_USERNAME }}/bonfire"
               }
@@ -123,3 +130,29 @@ jobs:
           build-args: |
             BASE_IMAGE=ghcr.io/${{ secrets.DOCKERHUB_USERNAME }}/base:stage
           labels: ${{ steps.meta.outputs.labels }}
+  
+      - name: Checkout Configuration Repository
+        run: |
+            echo "Cloning configuration repository"
+            mkdir -p $CLONE_DIR
+            git clone -b $CONFIG_BRANCH ${{ secrets.K8_CONFIG_REPO }} $CLONE_DIR
+      
+      - name: Set Up Git Identity
+        run: |
+            cd $CLONE_DIR
+            git config user.email "ci@abron.co"
+            git config user.name "CI Bot"
+
+
+      - name: Update Image Tag in kustomization.yaml
+        run: |
+            awk -v name=${{ steps.export.outputs.name }} -v tag="  newTag: ${{ github.sha }}" '$0 ~ "^- name: " name "$" {found=1} found && /^  newTag:/ {sub(/^  newTag: .*/, tag); found=0} {print} ' "$CONFIG_FILE" > temp.yml && mv temp.yml "$CONFIG_FILE"
+            awk -v name=${{ steps.export.outputs.name }} -v new_image="  newName: ghcr.io/${{ steps.export.outputs.tag }}" ' $0 ~ "^- name: " name "$" {found=1} found && /^  newName:/ {sub(/^  newName: .*/, new_image); found=0} {print} ' "$CONFIG_FILE" > temp.yml && mv temp.yml "$CONFIG_FILE"
+
+
+      - name: Commit & Push Changes
+        run: |
+            cd $CLONE_DIR
+            git add .
+            git commit -am "Update image tag to the latest commit ${{ github.sha }}"
+            git push origin $CONFIG_BRANCH  
