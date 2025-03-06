@@ -148,7 +148,7 @@ jobs:
 
       - name: Update Image Tag in kustomization.yaml
         run: |
-            awk -v name=${{ steps.export.outputs.name }} -v tag="  newTag: ${{ github.sha }}" '$0 ~ "^- name: " name "$" {found=1} found && /^  newTag:/ {sub(/^  newTag: .*/, tag); found=0} {print} ' "$CONFIG_FILE" > temp.yml && mv temp.yml "$CONFIG_FILE"
+            awk -v name=${{ steps.export.outputs.name }} -v tag="  newTag: sha-${{ github.sha }}" '$0 ~ "^- name: " name "$" {found=1} found && /^  newTag:/ {sub(/^  newTag: .*/, tag); found=0} {print} ' "$CONFIG_FILE" > temp.yml && mv temp.yml "$CONFIG_FILE"
             awk -v name=${{ steps.export.outputs.name }} -v new_image="  newName: ghcr.io/${{ steps.export.outputs.tag }}" ' $0 ~ "^- name: " name "$" {found=1} found && /^  newName:/ {sub(/^  newName: .*/, new_image); found=0} {print} ' "$CONFIG_FILE" > temp.yml && mv temp.yml "$CONFIG_FILE"
 
 
