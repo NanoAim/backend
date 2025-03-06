@@ -128,7 +128,7 @@ jobs:
           file: ${{ steps.export.outputs.path }}/Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |
-            BASE_IMAGE=ghcr.io/${{ secrets.DOCKERHUB_USERNAME }}/base:stage
+            BASE_IMAGE=ghcr.io/${{ secrets.DOCKERHUB_USERNAME }}/base:${{ github.sha }}
           labels: ${{ steps.meta.outputs.labels }}
   
       - name: Checkout Configuration Repository
