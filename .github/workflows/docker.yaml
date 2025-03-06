@@ -116,7 +116,9 @@ jobs:
         with:
           images: |
             # docker.io/${{ steps.export.outputs.tag }}
-            ghcr.io/${{ steps.export.outputs.tag }}:${{ github.sha }}
+            ghcr.io/${{ steps.export.outputs.tag }}
+          tags: |
+            type=sha
 
       # Build crate image
       - name: Publish
