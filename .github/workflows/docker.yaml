@@ -116,7 +116,7 @@ jobs:
         with:
           images: |
             # docker.io/${{ steps.export.outputs.tag }}
-            ghcr.io/${{ steps.export.outputs.tag }}
+            ghcr.io/${{ steps.export.outputs.tag }}:${{ github.sha }}
 
       # Build crate image
       - name: Publish
@@ -128,7 +128,7 @@ jobs:
           file: ${{ steps.export.outputs.path }}/Dockerfile
           tags: ${{ steps.meta.outputs.tags }}
           build-args: |
-            BASE_IMAGE=ghcr.io/${{ secrets.DOCKERHUB_USERNAME }}/base:${{ github.sha }}
+            BASE_IMAGE=ghcr.io/${{ secrets.DOCKERHUB_USERNAME }}/base:stage
           labels: ${{ steps.meta.outputs.labels }}
   
       - name: Checkout Configuration Repository
