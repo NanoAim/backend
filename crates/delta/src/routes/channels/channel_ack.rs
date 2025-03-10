@@ -28,10 +28,9 @@ pub async fn ack(
         .await
         .throw_if_lacking_channel_permission(ChannelPermission::ViewChannel)?;
 
-    channel
-        .ack(&user.id, &message.id)
-        .await
-        .map(|_| EmptyResponse)
+    channel.ack(&user.id, &message.id).await?;
+
+    Ok(EmptyResponse)
 }
 
 #[cfg(test)]
