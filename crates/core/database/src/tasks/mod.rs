@@ -10,6 +10,7 @@ const WORKER_COUNT: usize = 5;
 pub mod ack;
 pub mod apple_notifications;
 pub mod last_message_id;
+pub mod notification_settings;
 pub mod process_embeds;
 pub mod web_push;
 

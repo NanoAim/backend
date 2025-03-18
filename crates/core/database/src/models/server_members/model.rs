@@ -141,6 +141,27 @@ impl Member {
         .private(user.id.clone())
         .await;
 
+        // Set notification preference to "all" for all channels accessible to the user
+        // First, set server notification to "all"
+        if let Err(err) = crate::tasks::notification_settings::set_server_notification_to_all(db, &user.id, &server.id).await {
+            log::error!("Failed to set server notification settings for server {} when user {} joined: {}", 
+                server.id, user.id, err);
+        } else {
+            log::info!("Successfully set server notification settings for server {} when user {} joined", 
+                server.id, user.id);
+        }
+        
+        // Then set channel notifications to "all"
+        for channel in &channels {
+            if let Err(err) = crate::tasks::notification_settings::set_channel_notification_to_all(db, &user.id, channel.id()).await {
+                log::error!("Failed to set notification settings for channel {} when user {} joined server {}: {}", 
+                    channel.id(), user.id, server.id, err);
+            } else {
+                log::info!("Successfully set notification settings for channel {} when user {} joined server {}", 
+                    channel.id(), user.id, server.id);
+            }
+        }
+
         if let Some(id) = server
             .system_messages
             .as_ref()

@@ -359,6 +359,9 @@ impl Channel {
             Channel::Group { id, .. } => {
                 db.add_user_to_group(id, &user.id).await?;
 
+                // Set notification preference to "all" for this channel
+                crate::tasks::notification_settings::set_channel_notification_to_all(db, &user.id, id).await.ok();
+
                 EventV1::ChannelGroupJoin {
                     id: id.to_string(),
                     user: user.id.to_string(),
