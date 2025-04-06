@@ -105,6 +105,7 @@ pub async fn worker(db: Database) {
                             info!("No FCM token was specified!");
                         }
                     } else if sub.endpoint == "apn" {
+                        info!("SENDING APN NOTIFICATION");
                         apple_notifications::queue(apple_notifications::ApnJob::from_notification(
                             session.id,
                             session.user_id,

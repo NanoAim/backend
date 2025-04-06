@@ -165,7 +165,11 @@ static Q: Lazy<Queue<ApnJob>> = Lazy::new(|| Queue::new(10_000));
 /// Queue a new task for a worker
 pub async fn queue(task: ApnJob) {
     Q.try_push(task).ok();
-    info!("Queue is using {} slots from {}.", Q.len(), Q.capacity());
+    info!(
+        "apple_notifications: Queue is using {} slots from {}.",
+        Q.len(),
+        Q.capacity()
+    );
 }
 
 async fn get_badge_count(db: &Database, user: &str) -> Option<u32> {
