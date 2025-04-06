@@ -189,10 +189,13 @@ async fn get_badge_count(db: &Database, user: &str) -> Option<u32> {
 /// Start a new worker
 pub async fn worker(db: Database) {
     let config = config().await;
+    info!("APN worker starting...");
+
     if config.api.apn.pkcs8.is_empty()
         || config.api.apn.key_id.is_empty()
         || config.api.apn.team_id.is_empty()
     {
+        error!("Missing APN keys - worker stopping.");
         eprintln!("Missing APN keys.");
         return;
     }
@@ -228,6 +231,9 @@ pub async fn worker(db: Database) {
 
     loop {
         let task = Q.pop().await;
+
+        info!("APN - Received task: {:?}", task.job_type);
+
         let payload: AssembledPayload;
 
         match task.job_type {
@@ -281,13 +287,24 @@ pub async fn worker(db: Database) {
             }
         }
 
+        info!(
+            "APN - Sending notification to APN service for token: {}",
+            match task.job_type {
+                JobType::Alert(ref a) => &a.device_token,
+                JobType::Badge(ref a) => &a.device_token,
+            }
+        );
+
         let resp = match payload {
             AssembledPayload::Alert(p) => client.send(p).await,
             AssembledPayload::Default(p) => client.send(p).await,
         };
-        //println!("response from APNS: {:?}", resp);
+
+        info!("APN - Response from APNS: {:?}", resp);
 
         if let Err(err) = resp {
+            error!("APN - Error sending notification: {:?}", err);
+
             match err {
                 Error::ResponseError(Response {
                     error:
