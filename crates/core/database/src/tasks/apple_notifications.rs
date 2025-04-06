@@ -222,7 +222,7 @@ pub async fn worker(db: Database) {
         apns_push_type: Some(PushType::Alert),
         apns_expiration: None,
         apns_priority: Some(Priority::High),
-        apns_topic: Some("chat.revolt.app"),
+        apns_topic: Some("com.peptide.chat"),
         apns_collapse_id: None,
     };
 
