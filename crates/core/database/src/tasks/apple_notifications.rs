@@ -232,7 +232,6 @@ pub async fn worker(db: Database) {
     loop {
         let task = Q.pop().await;
 
-        // لاگ مهم: نمایش اطلاعات اساسی task دریافت شده
         info!("APN - Received task: {:?}", task.job_type);
 
         let payload: AssembledPayload;
@@ -288,7 +287,6 @@ pub async fn worker(db: Database) {
             }
         }
 
-        // لاگ مهم: قبل از ارسال به سرویس APN
         info!(
             "APN - Sending notification to APN service for token: {}",
             match task.job_type {
@@ -302,7 +300,6 @@ pub async fn worker(db: Database) {
             AssembledPayload::Default(p) => client.send(p).await,
         };
 
-        // لاگ مهم: پاسخ دریافتی از سرویس APN
         info!("APN - Response from APNS: {:?}", resp);
 
         if let Err(err) = resp {
