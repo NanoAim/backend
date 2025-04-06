@@ -15,7 +15,10 @@ pub mod web_push;
 
 /// Spawn background workers
 pub async fn start_workers(db: Database, authifier_db: authifier::Database) {
-    task::spawn(apple_notifications::worker(db.clone()));
+    let apn_db = db.clone();
+    task::spawn(async move {
+        apple_notifications::worker(apn_db).await;
+    });
 
     for _ in 0..WORKER_COUNT {
         task::spawn(ack::worker(db.clone(), authifier_db.clone()));
