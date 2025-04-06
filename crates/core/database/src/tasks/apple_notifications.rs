@@ -188,6 +188,7 @@ async fn get_badge_count(db: &Database, user: &str) -> Option<u32> {
 
 /// Start a new worker
 pub async fn worker(db: Database) {
+    eprintln!("APN worker function called!!!!!");
     let config = config().await;
     info!("APN worker starting...");
 
