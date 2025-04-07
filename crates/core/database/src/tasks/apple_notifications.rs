@@ -189,7 +189,14 @@ async fn get_badge_count(db: &Database, user: &str) -> Option<u32> {
 /// Start a new worker
 pub async fn worker(db: Database) {
     eprintln!("APN worker function called!!!!!");
+    eprintln!("Trying to load config...");
     let config = config().await;
+    eprintln!(
+        "Config loaded: APN keys present? {}",
+        !(config.api.apn.pkcs8.is_empty()
+            || config.api.apn.key_id.is_empty()
+            || config.api.apn.team_id.is_empty())
+    );
     info!("APN worker starting...");
 
     if config.api.apn.pkcs8.is_empty()
@@ -207,19 +214,36 @@ pub async fn worker(db: Database) {
         Endpoint::Production
     };
 
-    let pkcs8 = engine::general_purpose::STANDARD
-        .decode(config.api.apn.pkcs8)
-        .expect("valid `pcks8`");
+    // Convert base64 to PEM format
+    let decoded = match engine::general_purpose::STANDARD.decode(&config.api.apn.pkcs8) {
+        Ok(data) => data,
+        Err(e) => {
+            error!("Failed to decode PKCS8 key: {:?}", e);
+            return;
+        }
+    };
+
+    let pem = format!(
+        "-----BEGIN PRIVATE KEY-----\n{}\n-----END PRIVATE KEY-----",
+        engine::general_purpose::STANDARD.encode(&decoded)
+    );
 
     let client_config = ClientConfig::new(endpoint);
 
-    let client = Client::token(
-        &mut Cursor::new(pkcs8),
-        config.api.apn.key_id,
-        config.api.apn.team_id,
+    eprintln!("Creating APN client with PEM formatted key...");
+    let client = match Client::token(
+        &mut Cursor::new(pem.as_bytes()),
+        &config.api.apn.key_id,
+        &config.api.apn.team_id,
         client_config,
-    )
-    .expect("could not create APN client");
+    ) {
+        Ok(client) => client,
+        Err(e) => {
+            error!("Failed to create APN client: {:?}", e);
+            return;
+        }
+    };
+    eprintln!("APN client created successfully!");
 
     let payload_options = NotificationOptions {
         apns_id: None,
