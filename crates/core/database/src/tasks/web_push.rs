@@ -35,11 +35,6 @@ pub async fn queue(recipients: Vec<String>, payload: PushNotification) {
         return;
     }
 
-    let online_ids = filter_online(&recipients).await;
-    let recipients = (&recipients.into_iter().collect::<HashSet<String>>() - &online_ids)
-        .into_iter()
-        .collect::<Vec<String>>();
-
     Q.try_push(PushTask {
         recipients,
         payload,
@@ -66,106 +61,113 @@ pub async fn worker(db: Database) {
 
     loop {
         let task = Q.pop().await;
+        // Filter out online users
+        let online_ids = filter_online(&task.recipients).await;
+        let recipients: Vec<String> = (&task.recipients.into_iter().collect::<HashSet<String>>()
+            - &online_ids)
+            .into_iter()
+            .collect::<Vec<String>>();
 
-        if let Ok(sessions) = db.find_sessions_with_subscription(&task.recipients).await {
-            for session in sessions {
-                if let Some(sub) = session.subscription {
-                    if sub.endpoint == "fcm" {
-                        // Use Firebase Cloud Messaging
-                        if let Some(client) = &fcm_client {
-                            let PushNotification {
-                                author,
-                                icon,
-                                image: _,
-                                body,
-                                tag,
-                                timestamp: _,
-                                url: _,
-                                message: _,
-                            } = &task.payload;
+        // Try to find sessions with subscriptions
+        let mut found_sessions = Vec::new();
+        for user_id in &recipients {
+            if let Ok(sessions) = db.find_sessions(user_id).await {
+                found_sessions.extend(sessions.into_iter().filter(|s| s.subscription.is_some()));
+            }
+        }
 
-                            let mut notification = fcm::NotificationBuilder::new();
-                            notification.title(author);
-                            notification.icon(icon);
-                            notification.body(body);
-                            notification.tag(tag);
-                            // TODO: expand support for fields
-                            let notification = notification.finalize();
+        for session in found_sessions {
+            if let Some(sub) = session.subscription {
+                if sub.endpoint == "fcm" {
+                    // Use Firebase Cloud Messaging
+                    if let Some(client) = &fcm_client {
+                        let PushNotification {
+                            author,
+                            icon,
+                            image: _,
+                            body,
+                            tag,
+                            timestamp: _,
+                            url: _,
+                            message: _,
+                        } = &task.payload;
 
-                            let mut message_builder =
-                                fcm::MessageBuilder::new(&config.api.fcm.api_key, &sub.auth);
-                            message_builder.notification(notification);
+                        let mut notification = fcm::NotificationBuilder::new();
+                        notification.title(author);
+                        notification.icon(icon);
+                        notification.body(body);
+                        notification.tag(tag);
+                        // TODO: expand support for fields
+                        let notification = notification.finalize();
 
-                            if let Err(err) = client.send(message_builder.finalize()).await {
-                                error!("Failed to send FCM notification! {:?}", err);
-                            } else {
-                                info!("Sent FCM notification to {:?}.", session.id);
-                            }
+                        let mut message_builder =
+                            fcm::MessageBuilder::new(&config.api.fcm.api_key, &sub.auth);
+                        message_builder.notification(notification);
+
+                        if let Err(err) = client.send(message_builder.finalize()).await {
+                            error!("Failed to send FCM notification! {:?}", err);
                         } else {
-                            info!("No FCM token was specified!");
+                            info!("Sent FCM notification to {:?}.", session.id);
                         }
-                    } else if sub.endpoint == "apn" {
-                        info!("SENDING APN NOTIFICATION");
-                        apple_notifications::queue(apple_notifications::ApnJob::from_notification(
-                            session.id,
-                            session.user_id,
-                            sub.auth,
-                            &task.payload,
-                        ))
-                        .await;
                     } else {
-                        // Use Web Push Standard
-                        let subscription = SubscriptionInfo {
-                            endpoint: sub.endpoint,
-                            keys: SubscriptionKeys {
-                                auth: sub.auth,
-                                p256dh: sub.p256dh,
-                            },
-                        };
+                        info!("No FCM token was specified!");
+                    }
+                } else if sub.endpoint == "apn" {
+                    apple_notifications::queue(apple_notifications::ApnJob::from_notification(
+                        session.id,
+                        session.user_id,
+                        sub.auth.clone(),
+                        &task.payload,
+                    ))
+                    .await;
+                } else {
+                    // Use Web Push Standard
+                    let subscription = SubscriptionInfo {
+                        endpoint: sub.endpoint,
+                        keys: SubscriptionKeys {
+                            auth: sub.auth,
+                            p256dh: sub.p256dh,
+                        },
+                    };
 
-                        match VapidSignatureBuilder::from_pem(
-                            std::io::Cursor::new(&web_push_private_key),
-                            &subscription,
-                        ) {
-                            Ok(sig_builder) => match sig_builder.build() {
-                                Ok(signature) => {
-                                    let mut builder = WebPushMessageBuilder::new(&subscription);
-                                    builder.set_vapid_signature(signature);
+                    match VapidSignatureBuilder::from_pem(
+                        std::io::Cursor::new(&web_push_private_key),
+                        &subscription,
+                    ) {
+                        Ok(sig_builder) => match sig_builder.build() {
+                            Ok(signature) => {
+                                let mut builder = WebPushMessageBuilder::new(&subscription);
+                                builder.set_vapid_signature(signature);
 
-                                    let payload = json!(task.payload).to_string();
-                                    builder
-                                        .set_payload(ContentEncoding::AesGcm, payload.as_bytes());
+                                let payload = json!(task.payload).to_string();
+                                builder.set_payload(ContentEncoding::AesGcm, payload.as_bytes());
 
-                                    match builder.build() {
-                                        Ok(msg) => match web_push_client.send(msg).await {
-                                            Ok(_) => {
-                                                info!(
-                                                    "Sent Web Push notification to {:?}.",
-                                                    session.id
-                                                )
-                                            }
-                                            Err(err) => {
-                                                error!("Hit error sending Web Push! {:?}", err)
-                                            }
-                                        },
-                                        Err(err) => {
-                                            error!(
-                                                "Failed to build message for {}! {:?}",
-                                                session.user_id, err
-                                            )
+                                match builder.build() {
+                                    Ok(msg) => match web_push_client.send(msg).await {
+                                        Ok(_) => {
+                                            info!("Sent Web Push notification to {:?}.", session.id)
                                         }
+                                        Err(err) => {
+                                            error!("Hit error sending Web Push! {:?}", err)
+                                        }
+                                    },
+                                    Err(err) => {
+                                        error!(
+                                            "Failed to build message for {}! {:?}",
+                                            session.user_id, err
+                                        )
                                     }
                                 }
-                                Err(err) => error!(
-                                    "Failed to build signature for {}! {:?}",
-                                    session.user_id, err
-                                ),
-                            },
+                            }
                             Err(err) => error!(
-                                "Failed to create signature builder for {}! {:?}",
+                                "Failed to build signature for {}! {:?}",
                                 session.user_id, err
                             ),
-                        }
+                        },
+                        Err(err) => error!(
+                            "Failed to create signature builder for {}! {:?}",
+                            session.user_id, err
+                        ),
                     }
                 }
             }
