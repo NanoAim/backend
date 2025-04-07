@@ -61,12 +61,12 @@ pub async fn worker(db: Database) {
 
     loop {
         let task = Q.pop().await;
-        // Filter out online users
-        let online_ids = filter_online(&task.recipients).await;
-        let recipients: Vec<String> = (&task.recipients.into_iter().collect::<HashSet<String>>()
-            - &online_ids)
+        // Filter out the sender from recipients
+        let recipients: Vec<String> = task
+            .recipients
             .into_iter()
-            .collect::<Vec<String>>();
+            .filter(|id| id != &task.payload.message.author)
+            .collect();
 
         // Try to find sessions with subscriptions
         let mut found_sessions = Vec::new();
