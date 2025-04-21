@@ -1,0 +1,16 @@
+[package]
+name = "set_all_notifications"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "set_all_notifications"
+path = "set_all_notifications.rs"
+
+[dependencies]
+tokio = { version = "1.28", features = ["full"] }
+mongodb = "2.5.0"
+futures = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = "0.4" 
