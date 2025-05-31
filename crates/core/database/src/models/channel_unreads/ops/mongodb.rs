@@ -46,7 +46,7 @@ impl AbstractChannelUnreads for MongoDb {
                 doc! {
                     "$pull": {
                         "mentions": {
-                            "$lt": message_id
+                            "$lte": message_id  // Changed from $lt to $lte
                         }
                     },
                     "$set": {
