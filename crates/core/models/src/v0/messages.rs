@@ -16,7 +16,7 @@ use iso8601_timestamp::Timestamp;
 use super::{Embed, File, Member, MessageWebhook, User, Webhook, RE_COLOUR};
 
 pub static RE_MENTION: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"<@([0-9A-HJKMNP-TV-Z]{26})>").unwrap());
+    Lazy::new(|| Regex::new(r"<@(everyone|[0-9A-HJKMNP-TV-Z]{26})>").unwrap());
 
 auto_derived_partial!(
     /// Message

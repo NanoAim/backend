@@ -91,7 +91,9 @@ pub enum ChannelPermission {
     MoveMembers = 1 << 35,
 
     // * Misc. permissions
-    // % Bits 36 to 52: free area
+    /// Mention everyone in a channel
+    MentionEveryone = 1 << 36,
+    // % Bits 37 to 52: free area
     // % Bits 53 to 64: do not use
 
     // * Grant all permissions

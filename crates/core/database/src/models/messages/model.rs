@@ -316,11 +316,72 @@ impl Message {
 
         // Parse mentions in message.
         let mut mentions = HashSet::new();
+        let mut has_everyone_mention = false;
+        
         if allow_mentions {
             if let Some(content) = &data.content {
                 for capture in RE_MENTION.captures_iter(content) {
                     if let Some(mention) = capture.get(1) {
-                        mentions.insert(mention.as_str().to_string());
+                        let mention_str = mention.as_str();
+                        
+                        // Check for @everyone mention
+                        if mention_str == "everyone" {
+                            has_everyone_mention = true;
+                            continue; // Skip adding "everyone" as a user ID
+                        }
+                        
+                        mentions.insert(mention_str.to_string());
+                    }
+                }
+            }
+        }
+        
+        // Handle @everyone mention for server channels
+        if has_everyone_mention && allow_mentions {
+            // Extract server ID based on channel type
+            let server_id = match &channel {
+                Channel::TextChannel { server, .. } => Some(server),
+                Channel::VoiceChannel { server, .. } => Some(server),
+                _ => None, // Ignore @everyone in DMs and other channel types
+            };
+            
+            // Process @everyone for server channels only
+            if let Some(server) = server_id {
+                // Only process for user authors (not system or webhooks)
+                if let MessageAuthor::User(user) = &author {
+                    // Fetch the server to check ownership
+                    let server_obj = db.fetch_server(server).await?;
+                    
+                    // Check if user is server owner (automatic permission)
+                    let is_owner = server_obj.owner == user.id;
+                    
+                    // If not owner, check for MentionEveryone permission
+                    let has_permission = if !is_owner {
+                        // Fetch the database User type for permission check
+                        let db_user = db.fetch_user(&user.id).await?;
+                        
+                        use crate::util::permissions::perms;
+                        use revolt_permissions::calculate_channel_permissions;
+                        
+                        // Create permission query and calculate permissions
+                        let mut query = perms(db, &db_user).channel(&channel);
+                        let permission_value = calculate_channel_permissions(&mut query).await;
+                        
+                        // Check if user has the MentionEveryone permission
+                        permission_value.has_channel_permission(ChannelPermission::MentionEveryone)
+                    } else {
+                        true // Server owners always have permission
+                    };
+                    
+                    // If user has permission, add all server members to mentions
+                    if has_permission {
+                        use crate::models::server_members::AbstractServerMembers;
+                        let server_members = db.fetch_all_members(server).await?;
+                        
+                        // Add all member IDs to mentions
+                        for member in server_members {
+                            mentions.insert(member.id.user.to_string());
+                        }
                     }
                 }
             }
