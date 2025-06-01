@@ -1,4 +1,5 @@
-# Pep Backend
+
+# Pepchat Backend
 
 This is a monorepo for the Revolt backend.
 
